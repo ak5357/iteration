@@ -1,0 +1,102 @@
+---
+title: "Iteration and Listcols"
+author: "ak5357"
+date: "2024-10-29"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(rvest)
+```
+
+
+
+## Here's some lists
+```{r}
+l = list(
+  vec_numeric = 1:4,
+  unif_sample = runif(100),
+  mat = matrix(1:8, nrow = 2, ncol = 4, byrow = TRUE),
+  summary = summary(rnorm(1000))
+)
+```
+
+```{r}
+l$mat
+
+l[["mat"]][1, 3]
+
+l[[1]]
+l[[4]]
+```
+
+
+Make a list that's hopefully more useful
+
+Use Ctrl+alt+arrow to type in multiple rows at the same time. Can use ctrl+shift+alt to select multiple rows at a time. Some combination of these also
+
+* switch rows
+* duplicate rows
+
+```{r}
+list_norm =
+  list(
+    a = rnorm(20, 0, 5),
+    b = rnorm(20, 4, 5),
+    c = rnorm(20, 0, 10),
+    d = rnorm(20, 4, 10)
+  )
+
+list_norm[["b"]]
+```
+
+
+Reusing function from last class.
+
+```{r}
+mean_and_sd = function(x){
+  mean_x = mean(x)
+  sd_x = sd(x)
+  
+  out_df = tibble(
+    mean = mean_x,
+    sd = sd_x
+  )
+  
+  return(out_df)
+}
+```
+
+Let's use the function to take mean and sd of all samples.
+
+```{r}
+mean_and_sd(list_norm[["a"]])
+mean_and_sd(list_norm[["b"]])
+mean_and_sd(list_norm[["c"]])
+mean_and_sd(list_norm[["d"]])
+```
+
+# Use a for loop
+
+Create output list and run a for loop.
+```{r}
+# creating empty list with 4 spots
+output = vector("list", length = 4)
+
+for(i in 1:4){
+  output[[i]] = mean_and_sd(list_norm[[i]])
+}
+
+output
+```
+
+
+
+
+
+
+
+
+
+
