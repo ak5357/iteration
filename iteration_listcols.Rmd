@@ -91,6 +91,191 @@ for(i in 1:4){
 output
 ```
 
+## Do the same thing
+
+but with `map` instead
+
+```{r}
+output = map(list_norm, mean_and_sd)
+```
+
+Change output to dataframe
+
+```{r}
+output = map(list_norm, mean_and_sd) |> 
+  bind_rows()
+
+output = map_dfr(list_norm, mean_and_sd)
+
+output = map_dbl(list_norm, mean_and_sd)
+
+
+```
+
+## List Columns
+
+```{r}
+listcol_df =
+  tibble(
+    name = c("a", "b", "c", "d"),
+    samp = list_norm #must be same number of things in col 1 and col 2
+  )
+
+listcol_df
+
+listcol_df |> 
+  filter(name %in% c("a", "b"))
+
+listcol_df |> 
+  select(-samp)
+```
+
+```{r}
+listcol_df[["samp"]][["a"]]
+```
+
+```{r}
+mean_and_sd(listcol_df[["samp"]][["a"]])
+mean_and_sd(listcol_df[["samp"]][["b"]])
+
+map_dfr(listcol_df[["samp"]], mean_and_sd)
+```
+
+
+Add a list column
+```{r}
+listcol_df |> 
+  mutate(
+    iqr = map_dbl(samp, IQR),
+    # mean = map_dbl(listcol_df[["samp"]], mean),
+    # sd = map_dbl(listcol_df[["samp"]], sd),
+    output = map(listcol_df[["samp"]], mean_and_sd)
+  ) |> 
+  select(-samp) |> 
+  unnest(output)
+
+```
+
+Revisiting NSDUH
+```{r}
+nsduh_table <- function(html, table_num) {
+  
+  out_table = 
+    html |> 
+    html_table() |> 
+    nth(table_num) |>
+    slice(-1) |> 
+    select(-contains("P Value"))
+  
+  return(out_table)
+}
+```
+
+```{r}
+nsduh_url = "http://samhda.s3-us-gov-west-1.amazonaws.com/s3fs-public/field-uploads/2k15StateFiles/NSDUHsaeShortTermCHG2015.htm"
+nsduh_html = read_html(nsduh_url)
+```
+
+
+```{r}
+nsduh_table(nsduh_html, 1)
+nsduh_table(nsduh_html, 4)
+nsduh_table(nsduh_html, 5)
+```
+
+```{r}
+
+output = vector("list", 3)
+
+for (i in c(1, 4, 5)) {
+  output[[i]] = nsduh_table(nsduh_html, i)
+}
+
+nsduh_results = bind_rows(output)
+```
+
+```{r}
+map(c(1, 4, 5), nsduh_table, html = nsduh_html)
+```
+
+
+```{r}
+nsduh_df = 
+  tibble(
+    drug = c("marj", "cocaine", "heroin"),
+    table_n = c(1, 4,5 )
+  ) |> 
+  mutate(table = map(table_n, nsduh_table, html = nsduh_html)) |> 
+  unnest(table)
+
+nsduh_df |> 
+  filter(drug == "New York") |> 
+  pivot_longer(
+    cols = -c(drug, table_n, State),
+    names_to = "date",
+    values_to = "pct_usage"
+  )
+
+nsduh_df |> 
+  tibble(
+    drug = c("marj", "cocaine", "heroin"),
+    table_n = c(1, 4, 5)
+  ) |> 
+  mutate(
+    table = map(table_n, \(x) nsduh_table)
+  )
+```
+
+
+Weather example
+```{r}
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728", "USW00022534", "USS0023B17S"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2021-01-01",
+    date_max = "2022-12-31") |>
+  mutate(
+    name = recode(
+      id, 
+      USW00094728 = "CentralPark_NY", 
+      USW00022534 = "Molokai_HI",
+      USS0023B17S = "Waterhole_WA"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) |>
+  select(name, id, everything())
+```
+
+Create a list column.
+
+```{r}
+weather_nest = 
+  weather_df |> 
+  nest(data = date:tmin)
+```
+
+```{r}
+weather_nest[["data"]][[1]]
+```
+
+Let's try regressing tmax on tmin.
+```{r}
+lm(tmax ~ tmin, data = weather_nest[["data"]][[1]])
+lm(tmax ~ tmin, data = weather_nest[["data"]][[2]])
+lm(tmax ~ tmin, data = weather_nest[["data"]][[3]])
+```
+
+OR
+
+```{r}
+weather_nest |> 
+  mutate(model_fit = map(data, \(x) lm(tmax ~ tmin, data = x))) |> 
+  pull(model_fit)
+```
+
+
+
+
 
 
 
